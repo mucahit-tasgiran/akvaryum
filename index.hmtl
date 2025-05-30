@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aquarium Light Controller</title>
+    <meta name="theme-color" content="#1e40af">
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQXF1YXJpdW0gTGlnaHQgQ29udHJvbGxlciIsInNob3J0X25hbWUiOiJBcXVhcml1bSIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMWU0MGFmIiwidGhlbWVfY29sb3IiOiIjMWU0MGFmIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCwlM0NzdmcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJyB3aWR0aD0nMTkyJyBoZWlnaHQ9JzE5Micgdmlld0JveD0nMCAwIDI0IDI0JyBmaWxsPSclMjNmZmZmZmYnJTNFJTNDcGF0aCBkPSdNMTIgMmwtMS4wOSAyLjQ1TDggNmwtMi40NSAxLjA5TDQgOWwxLjA5IDIuNDVMNyAxNGwyLjQ1IDEuMDlMMTIgMTdsMS4wOS0yLjQ1TDE2IDE0bDIuNDUtMS4wOUwyMCA5bC0xLjA5LTIuNDVMMTcgNmwtMi40NS0xLjA5TDEyIDJ6JyUzRSUzQy9wYXRoJTNFJTNDL3N2ZyUzRSIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9zdmcreG1sIn1dfQ==">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #10b981;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+        }
+
+        .btn.danger:hover {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        }
+
+        .btn.secondary:hover {
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .brightness-control {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .brightness-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .brightness-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+        }
+
+        .brightness-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            border: none;
+        }
+
+        .brightness-value {
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .time-input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .status-info {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .status-info.error {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        @media (max-width: 480px) {
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .time-input-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                🐠 Akvaryum Işık Kontrolü
+                <span class="status-indicator" id="statusIndicator"></span>
+        </div>
+
+        <div class="card">
+            <h2>
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                Cihaz Durumu
+            </h2>
+            <button id="connectBtn" class="btn">Bluetooth İle Cihaza Bağlan</button>
+            <div id="connectionStatus" class="status-info hidden"></div>
+            <div id="deviceStatus"></div>
+        </div>
+
+        <div id="controlSection" class="hidden">
+            <div class="card">
+                <h2>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 2l-1.09 2.45L8 6l-2.45 1.09L4 9l1.09 2.45L7 14l2.45 1.09L12 17l1.09-2.45L16 14l2.45-1.09L20 9l-1.09-2.45L17 6l-2.45-1.09L12 2z"/>
+                    </svg>
+                    Işık Kontrolü
+                </h2>
+
+                <div class="control-grid">
+                    <button id="lightsOnBtn" class="btn">
+                        <svg class="icon" viewBox="0 0 24 24" style="display: inline; width: 20px; height: 20px; margin-right: 8px;">
+                            <path d="M12 2l-1.09 2.45L8 6l-2.45 1.09L4 9l1.09 2.45L7 14l2.45 1.09L12 17l1.09-2.45L16 14l2.45-1.09L20 9l-1.09-2.45L17 6l-2.45-1.09L12 2z"/>
+                        </svg>
+                        IŞIĞI AÇ
+                    </button>
+                    <button id="lightsOffBtn" class="btn danger">
+                        <svg class="icon" viewBox="0 0 24 24" style="display: inline; width: 20px; height: 20px; margin-right: 8px;">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.58 8 8-3.59 8-8 8z"/>
+                        </svg>
+                        IŞIĞI KAPAT
+                    </button>
+                </div>
+
+                <div class="brightness-control">
+                    <input type="range" id="manualBrightness" class="brightness-slider" min="0" max="100" value="0">
+                    <span class="brightness-value" id="brightnessValue">0%</span>
+                </div>
+                <button id="setBrightnessBtn" class="btn secondary">Parlaklığı Ayarla</button>
+                
+                <button id="autoModeBtn" class="btn secondary">Otomatik Moda Geç</button>
+            </div>
+
+            <div class="card">
+                <h2>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                        <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                    Ayarlar
+                </h2>
+                
+                <button id="openScheduleBtn" class="btn">Program Ayarları</button>
+                <button id="openWiFiBtn" class="btn secondary">WiFi Ayarları</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Settings Modal -->
+    <div id="scheduleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <svg class="icon" viewBox="0 0 24 24" style="margin-right: 10px;">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                        <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                    Program Ayarları
+                </h2>
+                <button class="close-btn" onclick="closeModal('scheduleModal')">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Işık Açılış Saati</label>
+                <div class="time-input-group">
+                    <select id="onHour">
+                        <option value="" disabled selected>Saat Seç</option>
+                        <option value="0">00</option>
+                        <option value="1">01</option>
+                        <option value="2">02</option>
+                        <option value="3">03</option>
+                        <option value="4">04</option>
+                        <option value="5">05</option>
+                        <option value="6">06</option>
+                        <option value="7">07</option>
+                        <option value="8">08</option>
+                        <option value="9">09</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                        <option value="14">14</option>
+                        <option value="15">15</option>
+                        <option value="16">16</option>
+                        <option value="17">17</option>
+                        <option value="18">18</option>
+                        <option value="19">19</option>
+                        <option value="20">20</option>
+                        <option value="21">21</option>
+                        <option value="22">22</option>
+                        <option value="23">23</option>
+                    </select>
+                    <select id="onMinute">
+                        <option value="" disabled selected>Dakika Seç</option>
+                        <option value="0">00</option>
+                        <option value="5">05</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="25">25</option>
+                        <option value="30">30</option>
+                        <option value="35">35</option>
+                        <option value="40">40</option>
+                        <option value="45">45</option>
+                        <option value="50">50</option>
+                        <option value="55">55</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Işık Kapanış Saati</label>
+                <div class="time-input-group">
+                    <select id="offHour">
+                        <option value="" disabled selected>Saat Seç</option>
+                        <option value="0">00</option>
+                        <option value="1">01</option>
+                        <option value="2">02</option>
+                        <option value="3">03</option>
+                        <option value="4">04</option>
+                        <option value="5">05</option>
+                        <option value="6">06</option>
+                        <option value="7">07</option>
+                        <option value="8">08</option>
+                        <option value="9">09</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                        <option value="14">14</option>
+                        <option value="15">15</option>
+                        <option value="16">16</option>
+                        <option value="17">17</option>
+                        <option value="18">18</option>
+                        <option value="19">19</option>
+                        <option value="20">20</option>
+                        <option value="21">21</option>
+                        <option value="22">22</option>
+                        <option value="23">23</option>
+                    </select>
+                    <select id="offMinute">
+                        <option value="" disabled selected>Dakika Seç</option>
+                        <option value="0">00</option>
+                        <option value="5">05</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                        <option value="25">25</option>
+                        <option value="30">30</option>
+                        <option value="35">35</option>
+                        <option value="40">40</option>
+                        <option value="45">45</option>
+                        <option value="50">50</option>
+                        <option value="55">55</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="fadeMinutes">Gün Doğumu/Batımı Süresi (Dakika)</label>
+                <input type="number" id="fadeMinutes" min="1" max="120" placeholder="30">
+            </div>
+
+            <div class="form-group">
+                <label for="maxBrightness">Otomatik Mod İçin Maximum Parlaklık (%)</label>
+                <input type="number" id="maxBrightness" min="1" max="100" placeholder="100" value="100">
+                <small style="color: rgba(255,255,255,0.7); font-size: 0.8rem; display: block; margin-top: 5px;">
+                    Otomatik programda asla bu parlaklık seviyesini aşmayacaktır. Manuel kontrollerin bir sınırlaması yoktur.
+                </small>
+            </div>
+
+            <button id="saveScheduleBtn" class="btn">Ayarları Kaydet</button>
+        </div>
+    </div>
+
+    <!-- WiFi Setup Modal -->
+    <div id="wifiModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <svg class="icon" viewBox="0 0 24 24" style="margin-right: 10px;">
+                        <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.07 2.93 1 9z"/>
+                        <path d="M9 17l3 3 3-3c-1.65-1.66-4.34-1.66-6 0z"/>
+                        <path d="M5 13l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+                    </svg>
+                    WiFi Bağlantı Ayrları
+                </h2>
+                <button class="close-btn" onclick="closeModal('wifiModal')">&times;</button>
+            </div>
+            
+            <div class="status-info">
+                <strong>Note:</strong> WiFi yalnızca otomatik zaman senkronizasyonu için kullanılır.
+            </div>
+            
+            <div class="form-group">
+                <label for="wifiSSID">WiFi Ağı (SSID)</label>
+                <input type="text" id="wifiSSID" placeholder="WiFi ağınızın adı">
+            </div>
+
+            <div class="form-group">
+                <label for="wifiPassword">WiFi Şifresi</label>
+                <input type="password" id="wifiPassword" placeholder="WiFi ağınızın şifresi">
+            </div>
+
+            <button id="saveWiFiBtn" class="btn">WiFi'ye Bağlan</button> 
+            <div id="wifiStatus" class="status-info hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        class AquariumController {
+            constructor() {
+                this.device = null;
+                this.characteristic = null;
+                this.isConnected = false;
+                this.statusUpdateInterval = null;
+                this.currentBrightness = 0;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.registerServiceWorker();
+            }
+
+            initializeElements() {
+                this.connectBtn = document.getElementById('connectBtn');
+                this.connectionStatus = document.getElementById('connectionStatus');
+                this.controlSection = document.getElementById('controlSection');
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.lightsOnBtn = document.getElementById('lightsOnBtn');
+                this.lightsOffBtn = document.getElementById('lightsOffBtn');
+                this.autoModeBtn = document.getElementById('autoModeBtn');
+                this.deviceStatus = document.getElementById('deviceStatus');
+                this.brightnessSlider = document.getElementById('manualBrightness');
+                this.brightnessValue = document.getElementById('brightnessValue');
+                this.setBrightnessBtn = document.getElementById('setBrightnessBtn');
+            }
+
+            setupEventListeners() {
+                this.connectBtn.addEventListener('click', () => this.connectToBluetooth());
+                this.lightsOnBtn.addEventListener('click', () => this.manualControl('on'));
+                this.lightsOffBtn.addEventListener('click', () => this.manualControl('off'));
+                this.autoModeBtn.addEventListener('click', () => this.manualControl('auto'));
+                
+                document.getElementById('openScheduleBtn').addEventListener('click', () => openModal('scheduleModal'));
+                document.getElementById('openWiFiBtn').addEventListener('click', () => openModal('wifiModal'));
+                document.getElementById('saveScheduleBtn').addEventListener('click', () => this.saveSchedule());
+                document.getElementById('saveWiFiBtn').addEventListener('click', () => this.saveWiFi());
+                
+                // Brightness slider events
+                this.brightnessSlider.addEventListener('input', (e) => {
+                    this.brightnessValue.textContent = e.target.value + '%';
+                });
+                this.setBrightnessBtn.addEventListener('click', () => this.setBrightness());
+            }
+
+            async registerServiceWorker() {
+                if ('serviceWorker' in navigator) {
+                    try {
+                        const registration = await navigator.serviceWorker.register(
+                            'data:application/javascript,self.addEventListener("install",e=>{e.waitUntil(self.skipWaiting())}),self.addEventListener("activate",e=>{e.waitUntil(self.clients.claim())}),self.addEventListener("fetch",e=>{e.respondWith(fetch(e.request))})'
+                        );
+                        console.log('Service Worker registered:', registration);
+                    } catch (error) {
+                        console.log('Service Worker registration failed:', error);
+                    }
+                }
+            }
+
+            async connectToBluetooth() {
+                if (!navigator.bluetooth) {
+                    this.showStatus('Bluetooth is not supported by this browser.', 'error');
+                    return;
+                }
+
+                try {
+                    this.connectBtn.innerHTML = '<span class="loading"></span> Bağlanıyor...';
+                    this.connectBtn.disabled = true;
+
+                    const device = await navigator.bluetooth.requestDevice({
+                        filters: [{ name: 'AquariumLight' }],
+                        optionalServices: ['12345678-1234-1234-1234-123456789abc']
+                    });
+
+                    const server = await device.gatt.connect();
+                    const service = await server.getPrimaryService('12345678-1234-1234-1234-123456789abc');
+                    
+                    this.characteristic = await service.getCharacteristic('87654321-4321-4321-4321-cba987654321');
+                    
+                    // Setup notifications to receive responses
+                    await this.characteristic.startNotifications();
+                    this.characteristic.addEventListener('characteristicvaluechanged', (event) => {
+                        const value = new TextDecoder().decode(event.target.value);
+                        this.handleBLEResponse(value);
+                    });
+                    
+                    this.device = device;
+                    this.isConnected = true;
+                    
+                    device.addEventListener('gattserverdisconnected', () => this.onDisconnected());
+                    
+                    this.showStatus('Cihaza başarıyla bağlanıldı!', 'success');
+                    this.statusIndicator.classList.add('connected');
+                    this.controlSection.classList.remove('hidden');
+                    this.connectBtn.textContent = 'Bağlandı';
+                    
+                    await this.getDeviceStatus();
+                    this.startStatusUpdates();
+
+                } catch (error) {
+                    console.error('Bluetooth connection failed:', error);
+                    this.showStatus('Failed to connect: ' + error.message, 'error');
+                    this.connectBtn.textContent = 'Connect via Bluetooth';
+                    this.connectBtn.disabled = false;
+                }
+            }
+
+            onDisconnected() {
+                this.isConnected = false;
+                this.statusIndicator.classList.remove('connected');
+                this.controlSection.classList.add('hidden');
+                this.connectBtn.textContent = 'Connect via Bluetooth';
+                this.connectBtn.disabled = false;
+                this.showStatus('Device disconnected', 'error');
+                
+                if (this.statusUpdateInterval) {
+                    clearInterval(this.statusUpdateInterval);
+                }
+            }
+
+            async sendCommand(command) {
+                if (!this.characteristic) {
+                    throw new Error('Not connected to device');
+                }
+
+                try {
+                    const commandString = JSON.stringify(command);
+                    console.log('Sending BLE command:', commandString);
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(commandString);
+                    
+                    await this.characteristic.writeValue(data);
+                } catch (error) {
+                    console.error('Failed to send BLE command:', error);
+                    throw error;
+                }
+            }
+
+            handleBLEResponse(response) {
+                try {
+                    console.log('BLE Response received:', response);
+                    const data = JSON.parse(response);
+                    
+                    if (data.currentPWM !== undefined || data.brightness !== undefined) {
+                        this.updateStatusDisplay(data);
+                    }
+                    
+                    if (data.status) {
+                        if (data.status === 'wifi_connected' && data.ip) {
+                            const wifiStatus = document.getElementById('wifiStatus');
+                            wifiStatus.textContent = `WiFi connected for time sync! IP: ${data.ip}`;
+                            wifiStatus.className = 'status-info';
+                            wifiStatus.classList.remove('hidden');
+                        } else if (data.status === 'wifi_failed') {
+                            const wifiStatus = document.getElementById('wifiStatus');
+                            wifiStatus.textContent = 'WiFi connection failed. Check credentials.';
+                            wifiStatus.className = 'status-info error';
+                            wifiStatus.classList.remove('hidden');
+                        }
+                    }
+                    
+                    if (data.error) {
+                        this.showStatus('Device error: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    console.log('Received non-JSON response:', response);
+                }
+            }
+
+            async getDeviceStatus() {
+                try {
+                    await this.sendCommand({ cmd: 'get_status' });
+                    // Response will be handled in handleBLEResponse
+                } catch (error) {
+                    console.error('Failed to get device status:', error);
+                }
+            }
+
+            updateStatusDisplay(status) {
+                const brightness = status.brightness !== undefined ? status.brightness : Math.round((status.currentPWM / 255) * 100);
+                this.currentBrightness = brightness;
+
+                const statusHtml = `
+                    <div style="display: grid; gap: 10px; font-size: 0.9rem;">
+                        <div><strong>Işık Modu:</strong> ${status.manualOverride ? 'Manuel Kontrol' : 'Otomatik Kontrol'}</div>
+                        <div><strong>Mevcut Parlaklık:</strong> ${brightness}%</div>
+                        <div><strong>Ayarlanan Maximum Parlaklık:</strong> ${status.maxBrightness || 100}%</div>
+                        <div><strong>Işık Açılış Saati:</strong> ${status.onTime || 'Not set'}</div>
+                        <div><strong>Işık Kapanış Saati:</strong> ${status.offTime || 'Not set'}</div>
+                        <div><strong>Gün Doğumu/Batımı Süresi:</strong> ${status.fadeMinutes || 'Not set'} Dakika</div>
+                        <div><strong>BLE:</strong> ${status.bleConnected ? 'Cihaza Bağlandı' : 'Cihaza Bağlı Değil'}</div>
+                        <div><strong>WiFi:</strong> ${status.wifiConnected ? 'Bağlandı (Saat Senkronizasyonu)' : 'Bağlı Değil'}</div>
+                        ${status.currentTime ? `<div><strong>Tarih/Saat:</strong> ${status.currentTime}</div>` : ''}
+                        ${status.ipAddress ? `<div><strong>IP Address:</strong> ${status.ipAddress}</div>` : ''}
+                    </div>
+                `;
+                this.deviceStatus.innerHTML = statusHtml;
+
+                const activeElement = document.activeElement;
+                
+                if (status.fadeMinutes && activeElement.id !== 'fadeMinutes') {
+                    document.getElementById('fadeMinutes').value = status.fadeMinutes;
+                }
+                if (status.maxBrightness && activeElement.id !== 'maxBrightness') {
+                    document.getElementById('maxBrightness').value = status.maxBrightness;
+                }
+                
+                // Update brightness slider if not currently being adjusted
+                if (activeElement.id !== 'manualBrightness') {
+                    this.brightnessSlider.value = brightness;
+                    this.brightnessValue.textContent = brightness + '%';
+                }
+            }
+
+            startStatusUpdates() {
+                this.statusUpdateInterval = setInterval(() => {
+                    if (this.isConnected) {
+                        this.getDeviceStatus();
+                    }
+                }, 10000); // Update every 10 seconds to reduce interference
+            }
+
+            async manualControl(action) {
+                // Disable buttons during command
+                this.lightsOnBtn.disabled = true;
+                this.lightsOffBtn.disabled = true;
+                this.autoModeBtn.disabled = true;
+                
+                try {
+                    await this.sendCommand({
+                        cmd: 'manual_control',
+                        action: action
+                    });
+                    
+                    this.showStatus(`Manual control: ${action.toUpperCase()}`, 'success');
+                    
+                } catch (error) {
+                    console.error('Manual control error:', error);
+                    this.showStatus('Failed to send manual control command', 'error');
+                } finally {
+                    // Re-enable buttons
+                    setTimeout(() => {
+                        this.lightsOnBtn.disabled = false;
+                        this.lightsOffBtn.disabled = false;
+                        this.autoModeBtn.disabled = false;
+                    }, 1000);
+                }
+            }
+
+            async setBrightness() {
+                this.setBrightnessBtn.disabled = true;
+                
+                try {
+                    const brightness = parseInt(this.brightnessSlider.value);
+                    
+                    await this.sendCommand({
+                        cmd: 'set_brightness',
+                        brightness: brightness
+                    });
+                    
+                    this.showStatus(`Brightness set to ${brightness}%`, 'success');
+                    
+                } catch (error) {
+                    console.error('Set brightness error:', error);
+                    this.showStatus('Failed to set brightness', 'error');
+                } finally {
+                    setTimeout(() => {
+                        this.setBrightnessBtn.disabled = false;
+                    }, 1000);
+                }
+            }
+
+            async saveSchedule() {
+                try {
+                    const onHour = document.getElementById('onHour').value;
+                    const onMinute = document.getElementById('onMinute').value;
+                    const offHour = document.getElementById('offHour').value;
+                    const offMinute = document.getElementById('offMinute').value;
+                    const fadeMinutes = document.getElementById('fadeMinutes').value;
+                    const maxBrightness = document.getElementById('maxBrightness').value;
+                    
+                    if (!onHour || onHour === '') {
+                        this.showStatus('Please select ON hour', 'error');
+                        return;
+                    }
+                    if (!onMinute || onMinute === '') {
+                        this.showStatus('Please select ON minute', 'error');
+                        return;
+                    }
+                    if (!offHour || offHour === '') {
+                        this.showStatus('Please select OFF hour', 'error');
+                        return;
+                    }
+                    if (!offMinute || offMinute === '') {
+                        this.showStatus('Please select OFF minute', 'error');
+                        return;
+                    }
+                    if (!fadeMinutes || fadeMinutes === '') {
+                        this.showStatus('Please enter fade duration', 'error');
+                        return;
+                    }
+                    if (!maxBrightness || maxBrightness === '' || maxBrightness < 1 || maxBrightness > 100) {
+                        this.showStatus('Please enter maximum brightness between 1-100%', 'error');
+                        return;
+                    }
+                    
+                    const scheduleData = {
+                        cmd: 'set_schedule',
+                        onHour: parseInt(onHour),
+                        onMinute: parseInt(onMinute),
+                        offHour: parseInt(offHour),
+                        offMinute: parseInt(offMinute),
+                        fadeMinutes: parseInt(fadeMinutes),
+                        maxBrightness: parseInt(maxBrightness)
+                    };
+
+                    await this.sendCommand(scheduleData);
+                    this.showStatus('Schedule saved successfully!', 'success');
+                    closeModal('scheduleModal');
+                } catch (error) {
+                    this.showStatus('Failed to save schedule', 'error');
+                }
+            }
+
+            async saveWiFi() {
+                try {
+                    const wifiData = {
+                        cmd: 'set_wifi',
+                        ssid: document.getElementById('wifiSSID').value,
+                        password: document.getElementById('wifiPassword').value
+                    };
+
+                    const wifiStatus = document.getElementById('wifiStatus');
+                    wifiStatus.textContent = 'Connecting to WiFi for time synchronization...';
+                    wifiStatus.className = 'status-info';
+                    wifiStatus.classList.remove('hidden');
+
+                    await this.sendCommand(wifiData);
+                    
+                    // Close modal after a delay to show the result
+                    setTimeout(() => {
+                        closeModal('wifiModal');
+                    }, 3000);
+                    
+                } catch (error) {
+                    const wifiStatus = document.getElementById('wifiStatus');
+                    wifiStatus.textContent = 'Failed to save WiFi credentials';
+                    wifiStatus.className = 'status-info error';
+                    wifiStatus.classList.remove('hidden');
+                }
+            }
+
+            showStatus(message, type = 'success') {
+                this.connectionStatus.textContent = message;
+                this.connectionStatus.className = `status-info ${type === 'error' ? 'error' : ''}`;
+                this.connectionStatus.classList.remove('hidden');
+
+                setTimeout(() => {
+                    this.connectionStatus.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AquariumController();
+        });
+
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+
+        // Close modal when clicking outside of it
+        window.addEventListener('click', (event) => {
+            if (event.target.classList.contains('modal')) {
+                closeModal(event.target.id);
+            }
+        });
+
+        // Close modal with Escape key
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                const openModal = document.querySelector('.modal.show');
+                if (openModal) {
+                    closeModal(openModal.id);
+                }
+            }
+        });
+
+        // Install prompt for PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button or banner
+            const installBanner = document.createElement('div');
+            installBanner.innerHTML = `
+                <div style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 15px 20px; border-radius: 10px; z-index: 1000; text-align: center;">
+                    <p style="margin: 0 0 10px 0;">Install Aquarium Controller for offline access</p>
+                    <button onclick="installPWA()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">Install</button>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: transparent; color: white; border: 1px solid white; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Later</button>
+                </div>
+            `;
+            document.body.appendChild(installBanner);
+        });
+
+        window.installPWA = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+                
+                // Remove install banner
+                const banner = document.querySelector('[style*="position: fixed"]');
+                if (banner) banner.remove();
+            }
+        };
+    </script>
+</body>
+</html>
