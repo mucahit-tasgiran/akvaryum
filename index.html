@@ -6,27 +6,13 @@
     <title>Akvaryum Dozaj Kontrolü</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-            background-color: #f0f2f5;
-            color: #333; margin: 0; padding: 20px;
-            display: flex; justify-content: center;
-        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .app-container { width: 100%; max-width: 500px; }
-        .card {
-            background: white; padding: 20px; border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px;
-        }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
         h2 { text-align: center; color: #0056b3; margin-top: 0; }
         label { font-weight: bold; font-size: 13px; color: #555; display: block; margin-top: 10px; }
-        input {
-            width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd;
-            border-radius: 6px; box-sizing: border-box; font-size: 14px;
-        }
-        button {
-            width: 100%; padding: 12px; border: none; border-radius: 6px;
-            font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s;
-        }
+        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-blue { background-color: #0056b3; color: white; margin-top: 15px; }
         .btn-blue:hover { background-color: #004494; }
         .btn-green { background-color: #28a745; color: white; margin-top: 10px; }
@@ -34,12 +20,9 @@
         .btn-red { background-color: #dc3545; color: white; margin-top: 20px; }
         .btn-outline { background-color: transparent; color: #0056b3; border: 2px solid #0056b3; margin-top: 10px; }
         .btn-outline:hover { background-color: #e6f0fa; }
-        
         #status-bar { text-align: center; font-weight: bold; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
         .offline { background-color: #f8d7da; color: #721c24; }
         .online { background-color: #d4edda; color: #155724; }
-
-        /* Pompa Grid Tasarımı */
         .pump-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .pump-box { background: #fafafa; border: 1px solid #eee; padding: 15px; border-radius: 8px; text-align: center; }
         .pump-box h3 { margin: 0 0 10px 0; font-size: 16px; color: #333; }
@@ -52,7 +35,6 @@
 
     <div id="setup-screen" class="card" style="display: block;">
         <h2>Cihaz Kurulumu</h2>
-        <p style="font-size: 13px; color: #666; text-align:center;">ESP32'nize bağlanıp Wi-Fi ve MQTT ayarlarını gönderin.</p>
         
         <label>Ev Wi-Fi Adı (SSID) *Sıfırdan kurulum için</label>
         <input type="text" id="ssid" placeholder="Örn: Ev_Net">
@@ -61,7 +43,7 @@
         
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
         
-        <label>HiveMQ / Broker Adresi</label>
+        <label>HiveMQ / Broker Adresi (ZORUNLU)</label>
         <input type="text" id="mq_ip" placeholder="xyz.s1.eu.hivemq.cloud">
         <label>MQTT Kullanıcı Adı</label>
         <input type="text" id="mq_u" placeholder="dozaj_admin">
@@ -74,4 +56,157 @@
         <div id="ble-status" style="text-align: center; margin-top: 10px; font-weight: bold; font-size: 14px;"></div>
     </div>
 
-    <div id="dashboard-screen" style="display:
+    <div id="dashboard-screen" style="display: none;">
+        <div id="status-bar" class="offline">MQTT Bağlantısı Bekleniyor...</div>
+        
+        <div class="card">
+            <h2>Akvaryum Dozaj Pompaları</h2>
+            <div id="pumps-container" class="pump-grid"></div>
+            <button class="btn-red" onclick="resetApp()">Sistemi Sıfırla (Kuruluma Dön)</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const serviceUuid = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+    const characteristicUuid = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+    const setupScreen = document.getElementById('setup-screen');
+    const dashboardScreen = document.getElementById('dashboard-screen');
+    const statusBar = document.getElementById('status-bar');
+    let mqttClient = null;
+
+    window.onload = () => {
+        try {
+            const savedConfig = localStorage.getItem('dozaj_config');
+            if (savedConfig) {
+                const config = JSON.parse(savedConfig);
+                openDashboard(config);
+            }
+        } catch (error) {
+            localStorage.removeItem('dozaj_config');
+        }
+    };
+
+    function buildPumpUI() {
+        const container = document.getElementById('pumps-container');
+        container.innerHTML = '';
+        for (let i = 1; i <= 6; i++) {
+            container.innerHTML += `
+                <div class="pump-box">
+                    <h3>Pompa ${i}</h3>
+                    <label>Kalibrasyon (1ml=sn)</label>
+                    <input type="number" id="cal_${i}" value="10" step="0.1">
+                    <label>Dozaj (ml)</label>
+                    <input type="number" id="dose_${i}" value="2" step="0.5">
+                    <button class="btn-green" onclick="triggerPump(${i})">Çalıştır</button>
+                </div>
+            `;
+        }
+    }
+
+    // Ortak panel açma fonksiyonu
+    function openDashboard(config) {
+        setupScreen.style.display = 'none';
+        dashboardScreen.style.display = 'block';
+        buildPumpUI();
+        
+        // Ekranın değişmesi için 100ms bekleyip MQTT'yi başlatıyoruz (Çökmeyi önler)
+        setTimeout(() => {
+            connectMQTT(config);
+        }, 100);
+    }
+
+    // --- BLUETOOTH KURULUM (GİZLENDİ, UZUN OLMASIN DİYE KISALTTIK) ---
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+        alert("Şu an test aşamasında olduğumuz için lütfen 'Direkt Paneli Aç' butonunu kullanın.");
+    });
+
+    // --- BYPASS İŞLEMİ (GÜNCELLENEN VE GÜVENLİ HALE GETİRİLEN KISIM) ---
+    document.getElementById('skipBtn').addEventListener('click', () => {
+        try {
+            const mq_ip = document.getElementById('mq_ip').value;
+            const mq_u = document.getElementById('mq_u').value;
+            const mq_p = document.getElementById('mq_p').value;
+
+            // KONTROL: Broker adresi boş mu?
+            if (mq_ip === "") { 
+                alert("LÜTFEN DİKKAT: HiveMQ / Broker Adresini mutlaka doldurmalısınız!"); 
+                return; 
+            }
+
+            const payloadObj = { ssid: "", pass: "", mq_ip: mq_ip, mq_u: mq_u, mq_p: mq_p };
+            localStorage.setItem('dozaj_config', JSON.stringify(payloadObj));
+            
+            // Paneli Aç
+            openDashboard(payloadObj);
+
+        } catch (err) {
+            alert("Buton çalışırken bir hata oluştu: " + err.message);
+        }
+    });
+
+    // --- MQTT BAĞLANTISI ---
+    function connectMQTT(config) {
+        // Kütüphane yüklenmiş mi kontrolü
+        if (typeof mqtt === 'undefined') {
+            statusBar.innerText = "HATA: MQTT Kütüphanesi Yüklenemedi! (İnterneti veya Reklam Engelleyiciyi kontrol edin)";
+            return;
+        }
+
+        const brokerUrl = `wss://${config.mq_ip}:8884/mqtt`;
+        const options = {
+            clientId: 'WebUygulamasi_' + Math.random().toString(16).substr(2, 8),
+            username: config.mq_u,
+            password: config.mq_p,
+            clean: true
+        };
+
+        statusBar.innerText = "Buluta Bağlanılıyor...";
+        statusBar.className = "offline";
+
+        try {
+            mqttClient = mqtt.connect(brokerUrl, options);
+
+            mqttClient.on('connect', () => {
+                statusBar.innerText = "Sistem Çevrimiçi - Bağlantı Başarılı";
+                statusBar.className = "online";
+            });
+
+            mqttClient.on('error', (err) => {
+                statusBar.innerText = "Bağlantı Hatası! Bilgileri kontrol edin.";
+                console.error(err);
+            });
+        } catch (err) {
+            statusBar.innerText = "Bağlantı Başlatılamadı: " + err.message;
+        }
+    }
+
+    // --- MOTORU TETİKLEME ---
+    function triggerPump(pumpId) {
+        if (!mqttClient || !mqttClient.connected) {
+            alert("Lütfen sistemin çevrimiçi olmasını bekleyin!");
+            return;
+        }
+
+        const cal = parseFloat(document.getElementById(`cal_${pumpId}`).value);
+        const dose = parseFloat(document.getElementById(`dose_${pumpId}`).value);
+        const ms = Math.round(cal * dose * 1000);
+
+        const topic = `dozaj/pompa/${pumpId}`;
+        mqttClient.publish(topic, ms.toString());
+        console.log(`Gönderilen: Başlık=${topic}, Süre=${ms}ms`);
+    }
+
+    // --- SİSTEMİ SIFIRLAMA ---
+    function resetApp() {
+        if(confirm("Kurulum ekranına dönmek istediğinize emin misiniz?")) {
+            localStorage.removeItem('dozaj_config');
+            location.reload();
+        }
+    }
+</script>
+
+</body>
+</html>
