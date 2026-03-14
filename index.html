@@ -57,4 +57,21 @@
         <label>Ev Wi-Fi Adı (SSID) *Sıfırdan kurulum için</label>
         <input type="text" id="ssid" placeholder="Örn: Ev_Net">
         <label>Ev Wi-Fi Şifresi</label>
-        <input type="password" id="
+        <input type="password" id="pass">
+        
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        
+        <label>HiveMQ / Broker Adresi</label>
+        <input type="text" id="mq_ip" placeholder="xyz.s1.eu.hivemq.cloud">
+        <label>MQTT Kullanıcı Adı</label>
+        <input type="text" id="mq_u" placeholder="dozaj_admin">
+        <label>MQTT Şifresi</label>
+        <input type="password" id="mq_p">
+
+        <button class="btn-blue" id="connectBtn">1. Bluetooth ile Cihaza Gönder</button>
+        <button class="btn-outline" id="skipBtn">2. Cihaz Zaten Bağlı (Direkt Paneli Aç)</button>
+        
+        <div id="ble-status" style="text-align: center; margin-top: 10px; font-weight: bold; font-size: 14px;"></div>
+    </div>
+
+    <div id="dashboard-screen" style="display:
